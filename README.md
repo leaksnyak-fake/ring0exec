@@ -35,7 +35,7 @@ Reads the `LSTAR` MSR (`0xC0000082`) to get the address of `KiSystemCall64`, the
 
 ### Kernel debug output (WinDbg)
 
-![WinDbg log](windbg.png)
+![WinDbg log](screenshots/windbg.png)
 
 Full resolution of what happened:
 - `KiSystemCall64` found at `FFFFF8039F0BD740` via LSTAR MSR scan
@@ -63,7 +63,7 @@ Full resolution of what happened:
 
 `cmd.exe` (PID 2684) visible as a direct child of `System (4)`:
 
-![Process list](prochacker.png)
+![Process list](screenshots/prochacker.png)
 
 ---
 
@@ -71,7 +71,7 @@ Full resolution of what happened:
 
 `Parent: System (4)` — a user-mode Win32 process with System as parent is the clearest indicator of kernel-originated creation:
 
-![General tab](general.png)
+![General tab](screenshots/general.png)
 
 ---
 
@@ -79,7 +79,7 @@ Full resolution of what happened:
 
 Environment block captured from a session-1 process and passed through `RTL_USER_PROCESS_PARAMETERS`. `USERNAME: SYSTEM`, `Path`, `SystemRoot` all present:
 
-![Environment tab](env.png)
+![Environment tab](screenshots/env.png)
 
 ---
 
@@ -87,7 +87,7 @@ Environment block captured from a session-1 process and passed through `RTL_USER
 
 Running as `NT AUTHORITY\СИСТЕМА` in session 0:
 
-![Token tab](token.png)
+![Token tab](screenshots/token.png)
 
 ---
 
