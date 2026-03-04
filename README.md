@@ -1,4 +1,4 @@
-# parental_control_dev
+# ring0exec
 
 > ❗ **Disclaimer**
 > This project is provided **strictly for educational and research purposes only.**
@@ -110,9 +110,9 @@ Running as `NT AUTHORITY\СИСТЕМА` in session 0:
 
 ## Building
 
-1. Open `parental_control_dev.sln`
+1. Open `ring0exec.sln`
 2. Select **Release / x64**
-3. Build → `x64\Release\parental_control_dev.sys`
+3. Build → `x64\Release\ring0exec.sys`
 
 No external dependencies. All undocumented structures are defined locally in `ntoskrnl.h`.
 
@@ -124,7 +124,7 @@ No external dependencies. All undocumented structures are defined locally in `nt
 bcdedit /set testsigning on
 :: reboot required
 
-sc create kproc type= kernel binPath= C:\path\to\parental_control_dev.sys
+sc create kproc type= kernel binPath= C:\path\to\ring0exec.sys
 sc start kproc
 
 sc stop kproc
@@ -138,15 +138,15 @@ Attach **DebugView** (kernel capture enabled) or a WinDbg session to see the ful
 ## Project structure
 
 ```
-├── parental_control_dev/
+├── ring0exec/
 │   ├── main.c                            # DriverEntry, Unload, global NT API pointers
 │   ├── exec.c / exec.h                   # Process creation, parameter building, PEB patching
 │   ├── utils.c / utils.h                 # SSDT scan, ntdll mapping, export lookup, index extraction
 │   ├── ntoskrnl.h                        # Undocumented NT structures (RTL_USER_PROCESS_PARAMETERS, PS_CREATE_INFO, SDT ...)
 │   ├── _def.h                            # NT API typedefs and extern declarations
-│   ├── parental_control_dev.inf
-│   ├── parental_control_dev.vcxproj
-│   └── parental_control_dev.vcxproj.filters
+│   ├── ring0exec.inf
+│   ├── ring0exec.vcxproj
+│   └── ring0exec.vcxproj.filters
 ├── screenshots/
 │   ├── windbg.png
 │   ├── prochacker.png
@@ -156,7 +156,7 @@ Attach **DebugView** (kernel capture enabled) or a WinDbg session to see the ful
 ├── .gitignore
 ├── .gitattributes
 ├── LICENSE.txt
-├── parental_control_dev.sln
+├── ring0exec.sln
 └── README.md
 ```
 
