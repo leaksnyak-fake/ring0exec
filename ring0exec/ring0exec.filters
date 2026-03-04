@@ -19,7 +19,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="parental_control_dev.inf">
+    <Inf Include="ring0exec.inf">
       <Filter>Driver Files</Filter>
     </Inf>
   </ItemGroup>

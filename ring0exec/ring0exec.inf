@@ -1,5 +1,5 @@
 ;
-; parental_control_dev.inf
+; ring0exec.inf
 ;
 
 [Version]
@@ -7,7 +7,7 @@ Signature   = "$WINDOWS NT$"
 Class       = System ; TODO: specify appropriate Class
 ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
 Provider    = %ManufacturerName%
-CatalogFile = parental_control_dev.cat
+CatalogFile = ring0exec.cat
 DriverVer   = ; TODO: set DriverVer in stampinf property pages
 PnpLockdown = 1
 
@@ -18,7 +18,7 @@ DefaultDestDir = 13
 1 = %DiskName%,,,""
 
 [SourceDisksFiles]
-parental_control_dev.sys = 1,,
+ring0exec.sys = 1,,
 
 ;*****************************************
 ; Install Section
@@ -28,35 +28,35 @@ parental_control_dev.sys = 1,,
 %ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
 
 [Standard.NT$ARCH$.10.0...16299]
-%parental_control_dev.DeviceDesc% = parental_control_dev_Device, Root\parental_control_dev ; TODO: edit hw-id
+%ring0exec.DeviceDesc% = ring0exec_Device, Root\ring0exec ; TODO: edit hw-id
 
-[parental_control_dev_Device.NT]
+[ring0exec_Device.NT]
 CopyFiles = File_Copy
 
 [File_Copy]
-parental_control_dev.sys
+ring0exec.sys
 
 ;-------------- Service installation
-[parental_control_dev_Device.NT.Services]
-AddService = parental_control_dev,%SPSVCINST_ASSOCSERVICE%, parental_control_dev_Service_Inst
+[ring0exec_Device.NT.Services]
+AddService = ring0exec,%SPSVCINST_ASSOCSERVICE%, ring0exec_Service_Inst
 
-; -------------- parental_control_dev driver install sections
-[parental_control_dev_Service_Inst]
-DisplayName    = %parental_control_dev.SVCDESC%
+; -------------- ring0exec driver install sections
+[ring0exec_Service_Inst]
+DisplayName    = %ring0exec.SVCDESC%
 ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
 StartType      = 3               ; SERVICE_DEMAND_START
 ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
-ServiceBinary  = %13%\parental_control_dev.sys
+ServiceBinary  = %13%\ring0exec.sys
 
-[parental_control_dev_Device.NT.Wdf]
-KmdfService = parental_control_dev, parental_control_dev_wdfsect
+[ring0exec_Device.NT.Wdf]
+KmdfService = ring0exec, ring0exec_wdfsect
 
-[parental_control_dev_wdfsect]
+[ring0exec_wdfsect]
 KmdfLibraryVersion = $KMDFVERSION$
 
 [Strings]
 SPSVCINST_ASSOCSERVICE = 0x00000002
 ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
-DiskName = "parental_control_dev Installation Disk"
-parental_control_dev.DeviceDesc = "parental_control_dev Device"
-parental_control_dev.SVCDESC = "parental_control_dev Service"
+DiskName = "ring0exec Installation Disk"
+ring0exec.DeviceDesc = "ring0exec Device"
+ring0exec.SVCDESC = "ring0exec Service"

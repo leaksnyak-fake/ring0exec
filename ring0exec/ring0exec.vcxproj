@@ -25,7 +25,8 @@
     <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
     <Configuration>Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">x64</Platform>
-    <RootNamespace>parental_control_dev</RootNamespace>
+    <RootNamespace>ring0exec</RootNamespace>
+    <ProjectName>ring0exec</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -101,7 +102,7 @@
     </DriverSign>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Inf Include="parental_control_dev.inf" />
+    <Inf Include="ring0exec.inf" />
   </ItemGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
