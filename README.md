@@ -1,5 +1,13 @@
 # parental_control_dev
 
+> ❗ **Disclaimer**
+> This project is provided **strictly for educational and research purposes only.**
+> The author bears **no responsibility** for any direct or indirect damages, illegal activity,
+> or misuse resulting from the use of this code.
+> By cloning or using this repository you acknowledge that you have read and agreed to these terms.
+
+---
+
 ![Platform](https://img.shields.io/badge/platform-Windows%2011%20x64-0078D4)
 ![Language](https://img.shields.io/badge/language-C%20%28ANSI%29-lightgrey)
 ![WDK](https://img.shields.io/badge/WDK-10.0-blue)
@@ -125,6 +133,32 @@ sc delete kproc
 
 Attach **DebugView** (kernel capture enabled) or a WinDbg session to see the full resolution log.
 
+---
+
+## Project structure
+
+```
+├── parental_control_dev/
+│   ├── main.c                            # DriverEntry, Unload, global NT API pointers
+│   ├── exec.c / exec.h                   # Process creation, parameter building, PEB patching
+│   ├── utils.c / utils.h                 # SSDT scan, ntdll mapping, export lookup, index extraction
+│   ├── ntoskrnl.h                        # Undocumented NT structures (RTL_USER_PROCESS_PARAMETERS, PS_CREATE_INFO, SDT ...)
+│   ├── _def.h                            # NT API typedefs and extern declarations
+│   ├── parental_control_dev.inf
+│   ├── parental_control_dev.vcxproj
+│   └── parental_control_dev.vcxproj.filters
+├── screenshots/
+│   ├── windbg.png
+│   ├── prochacker.png
+│   ├── general.png
+│   ├── env.png
+│   └── token.png
+├── .gitignore
+├── .gitattributes
+├── LICENSE.txt
+├── parental_control_dev.sln
+└── README.md
+```
 
 ---
 
