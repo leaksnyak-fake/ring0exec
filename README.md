@@ -31,45 +31,60 @@ Reads the `LSTAR` MSR (`0xC0000082`) to get the address of `KiSystemCall64`, the
 - *Semi-hardcoded scan* — scans forward for `MOV EAX, imm32` (tolerates hook trampolines)
 - *Hardcoded pattern* — matches the canonical `4C 8B D1 B8 XX XX 00 00` prologue as fallback
 
-**3. Process parameters**  
-`RtlCreateProcessParametersEx` is reimplemented in kernel mode. It allocates a single paged-pool block containing the `RTL_USER_PROCESS_PARAMETERS` header, all string data, and the environment block in the exact layout the kernel expects. The environment is captured from the first session-1 process found via `NtReadVirtualMemory`, so the spawned process gets a proper `PATH`, locale, and user variables.
+**3. Environment block capture from csrss.exe**  
+A process created from ring-0 has no inherited environment. The driver solves this by stealing a complete environment block from `csrss.exe` running in session 1:
 
-**4. Process creation**  
+1. `ZwQuerySystemInformation(SystemProcessInformation)` snapshots the full process list into a non-paged pool buffer.
+2. The snapshot is walked entry by entry, comparing `ImageName` against `L"csrss.exe"` (case-insensitive) and checking `SessionId == 1`.  `csrss.exe` is chosen because it is guaranteed to exist in every interactive session and maintains a complete, stable environment block with `PATH`, `SystemRoot`, locale, and user profile variables — unlike most user processes, it never terminates and its environment is never modified.
+3. Once the target PID is found, the driver opens it with `PROCESS_VM_READ | PROCESS_QUERY_INFORMATION` via `ObOpenObjectByPointer`, reads `PEB → ProcessParameters → Environment` through a chain of `NtReadVirtualMemory` calls.
+4. Because the environment size is unknown, the driver scans the remote memory in 4 KB chunks looking for the double-null terminator (`L"\0\0"`) that marks the end of the block (up to 256 KB limit).
+5. Once the size is determined, the entire block is copied into a paged kernel pool allocation and passed to `MyRtlCreateProcessParametersEx`, which embeds it into the `RTL_USER_PROCESS_PARAMETERS` layout expected by `NtCreateUserProcess`.
+
+The result: the spawned process inherits a fully populated environment indistinguishable from one set up by the session manager.
+
+**4. Process parameters**  
+`RtlCreateProcessParametersEx` is reimplemented in kernel mode. It allocates a single paged-pool block containing the `RTL_USER_PROCESS_PARAMETERS` header, all string data, and the captured environment block in the exact layout the kernel expects.
+
+**5. Process creation**  
 `NtCreateUserProcess` is called with `THREAD_CREATE_FLAGS_CREATE_SUSPENDED`. Before resume: the driver reads the PE headers from the new process's virtual memory to resolve the entry point, then clears `PEB->BeingDebugged` and `PEB->NtGlobalFlag` via `NtWriteVirtualMemory`.
+
+**6. Critical process flag**  
+After PEB patching, the driver calls `NtSetInformationProcess` with `ProcessBreakOnTermination` to mark the new process as critical to the system. If a critical process terminates for any reason, Windows triggers a bug check (`CRITICAL_PROCESS_DIED` 0xEF). This provides the spawned process with the same protection level as `csrss.exe` or `smss.exe` — killing it via Task Manager or `taskkill` will immediately blue-screen the machine.
 
 ---
 
 ## Demo
 
-### Kernel debug output (WinDbg)
+### Debug output (DebugView)
 
-![WinDbg log](screenshots/windbg.png)
+![DebugView log](screenshots/dbgview.png)
 
-Full resolution of what happened:
-- `KiSystemCall64` found at `FFFFF8039F0BD740` via LSTAR MSR scan
-- SSDT located at `FFFFF8039FC018C0`, limit 489 entries
-- `ntdll.dll` mapped at `00007FFB516E0000`
+Full resolution log:
+- `KiSystemCall64` found at `FFFFF805A14BD740` via LSTAR MSR scan
+- SSDT located at `FFFFF805A20018C0`, limit 489 entries
+- `ntdll.dll` mapped at `00007FFBF7F20000` (size `0x268000`)
 - All 5 syscall indices resolved via semi-hardcoded scan (offset 3 — canonical unpatched stubs):
 
 | Function | Index | Kernel address |
 |---|---|---|
-| `NtCreateUserProcess` | `0xD1` | `FFFFF8039F4C7440` |
-| `NtResumeThread` | `0x52` | `FFFFF8039F40FAE0` |
-| `NtQueryInformationProcess` | `0x19` | `FFFFF8039F3B3730` |
-| `NtWriteVirtualMemory` | `0x3A` | `FFFFF8039F3B15B0` |
-| `NtReadVirtualMemory` | `0x3F` | `FFFFF8039F3B15E0` |
+| `NtCreateUserProcess` | `0xD1` | `FFFFF805A18C7440` |
+| `NtResumeThread` | `0x52` | `FFFFF805A180FAE0` |
+| `NtQueryInformationProcess` | `0x19` | `FFFFF805A17B3730` |
+| `NtWriteVirtualMemory` | `0x3A` | `FFFFF805A17B15B0` |
+| `NtReadVirtualMemory` | `0x3F` | `FFFFF805A17B15E0` |
 
-- Environment copied from PID 540 (session-1), 2840 bytes
+- Environment copied from `csrss.exe` (PID 760, session 1), 1362 bytes
 - `NtCreateUserProcess` → `State=6` (`PsCreateSuccess`)
-- Entry point resolved: `00007FF70D077C70` (RVA `0x27C70`)
+- Entry point resolved: `00007FF7E18A7C70` (RVA `0x27C70`)
 - PEB patched: `BeingDebugged = 0`, `NtGlobalFlag = 0`
-- Process running as PID **2684**
+- Process marked as CRITICAL (`BreakOnTermination = 1`)
+- Process running as PID **11120**
 
 ---
 
 ### Process Hacker — process tree
 
-`cmd.exe` (PID 2684) visible as a direct child of `System (4)`:
+`cmd.exe` (PID 11120) visible as a direct child of `System (4)`, with a spawned `conhost.exe` (PID 10992):
 
 ![Process list](screenshots/prochacker.png)
 
@@ -77,7 +92,7 @@ Full resolution of what happened:
 
 ### General tab — parent process anomaly
 
-`Parent: System (4)` — a user-mode Win32 process with System as parent is the clearest indicator of kernel-originated creation:
+`Parent: System (4)` — a user-mode Win32 process with System as parent is the clearest indicator of kernel-originated creation. PEB at `0xF4A25B5000`, image type 64-bit:
 
 ![General tab](screenshots/general.png)
 
@@ -85,7 +100,7 @@ Full resolution of what happened:
 
 ### Environment tab
 
-Environment block captured from a session-1 process and passed through `RTL_USER_PROCESS_PARAMETERS`. `USERNAME: SYSTEM`, `Path`, `SystemRoot` all present:
+Environment block captured from `csrss.exe` (session 1) and passed through `RTL_USER_PROCESS_PARAMETERS`. `USERNAME: SYSTEM`, `Path`, `SystemRoot`, `PROCESSOR_ARCHITECTURE: AMD64` all present:
 
 ![Environment tab](screenshots/env.png)
 
@@ -93,9 +108,33 @@ Environment block captured from a session-1 process and passed through `RTL_USER
 
 ### Token tab
 
-Running as `NT AUTHORITY\СИСТЕМА` in session 0:
+Running as `NT AUTHORITY\СИСТЕМА` in session 0 with full SYSTEM token — all privileges present, mandatory integrity label at system level:
 
 ![Token tab](screenshots/token.png)
+
+---
+
+### Handles tab
+
+Open handles include `\Device\ConDrv` (console driver), registry keys under `HKLM` and `HKU`, directory objects, and the process thread. Standard handle set for a console-mode Win32 process:
+
+![Handles tab](screenshots/handels.png)
+
+---
+
+### Memory tab
+
+Virtual address space layout showing the PEB, thread stack, heap, mapped NLS files, locale data, and all loaded images (`cmd.exe`, `ntdll.dll`, `kernel32.dll`, `KernelBase.dll`, `ucrtbase.dll`, etc.):
+
+![Memory tab](screenshots/memory.png)
+
+---
+
+### Modules tab
+
+Loaded module list — minimal set of DLLs loaded by the Windows PE loader during process initialization. No injected or unusual modules:
+
+![Modules tab](screenshots/modules.png)
 
 ---
 
@@ -131,7 +170,7 @@ sc stop kproc
 sc delete kproc
 ```
 
-Attach **DebugView** (kernel capture enabled) or a WinDbg session to see the full resolution log.
+Attach **DebugView** (kernel capture enabled) or a kernel debugger session to see the full resolution log.
 
 ---
 
@@ -140,7 +179,7 @@ Attach **DebugView** (kernel capture enabled) or a WinDbg session to see the ful
 ```
 ├── ring0exec/
 │   ├── main.c                            # DriverEntry, Unload, global NT API pointers
-│   ├── exec.c / exec.h                   # Process creation, parameter building, PEB patching
+│   ├── exec.c / exec.h                   # Process creation, parameter building, PEB patching, env capture
 │   ├── utils.c / utils.h                 # SSDT scan, ntdll mapping, export lookup, index extraction
 │   ├── ntoskrnl.h                        # Undocumented NT structures (RTL_USER_PROCESS_PARAMETERS, PS_CREATE_INFO, SDT ...)
 │   ├── _def.h                            # NT API typedefs and extern declarations
@@ -148,11 +187,14 @@ Attach **DebugView** (kernel capture enabled) or a WinDbg session to see the ful
 │   ├── ring0exec.vcxproj
 │   └── ring0exec.vcxproj.filters
 ├── screenshots/
-│   ├── windbg.png
+│   ├── dbgview.png
 │   ├── prochacker.png
 │   ├── general.png
 │   ├── env.png
-│   └── token.png
+│   ├── token.png
+│   ├── handels.png
+│   ├── memory.png
+│   └── modules.png
 ├── .gitignore
 ├── .gitattributes
 ├── LICENSE.txt
