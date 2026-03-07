@@ -86,7 +86,7 @@ Full resolution log:
 
 `cmd.exe` (PID 11120) visible as a direct child of `System (4)`, with a spawned `conhost.exe` (PID 10992):
 
-![Process list](screenshots/prochacker1.png)
+![Process list](screenshots/prochacker.png)
 
 ---
 
@@ -94,7 +94,7 @@ Full resolution log:
 
 `Parent: System (4)` — a user-mode Win32 process with System as parent is the clearest indicator of kernel-originated creation. PEB at `0xF4A25B5000`, image type 64-bit:
 
-![General tab](screenshots/general1.png)
+![General tab](screenshots/general.png)
 
 ---
 
@@ -102,7 +102,7 @@ Full resolution log:
 
 Environment block captured from `csrss.exe` (session 1) and passed through `RTL_USER_PROCESS_PARAMETERS`. `USERNAME: SYSTEM`, `Path`, `SystemRoot`, `PROCESSOR_ARCHITECTURE: AMD64` all present:
 
-![Environment tab](screenshots/env1.png)
+![Environment tab](screenshots/env.png)
 
 ---
 
@@ -118,7 +118,7 @@ Running as `NT AUTHORITY\СИСТЕМА` in session 0 with full SYSTEM token —
 
 Open handles include `\Device\ConDrv` (console driver), registry keys under `HKLM` and `HKU`, directory objects, and the process thread. Standard handle set for a console-mode Win32 process:
 
-![Handles tab](screenshots/handels1.png)
+![Handles tab](screenshots/handels.png)
 
 ---
 
@@ -126,7 +126,7 @@ Open handles include `\Device\ConDrv` (console driver), registry keys under `HKL
 
 Virtual address space layout showing the PEB, thread stack, heap, mapped NLS files, locale data, and all loaded images (`cmd.exe`, `ntdll.dll`, `kernel32.dll`, `KernelBase.dll`, `ucrtbase.dll`, etc.):
 
-![Memory tab](screenshots/memory1.png)
+![Memory tab](screenshots/memory.png)
 
 ---
 
@@ -134,7 +134,7 @@ Virtual address space layout showing the PEB, thread stack, heap, mapped NLS fil
 
 Loaded module list — minimal set of DLLs loaded by the Windows PE loader during process initialization. No injected or unusual modules:
 
-![Modules tab](screenshots/modules1.png)
+![Modules tab](screenshots/modules.png)
 
 ---
 
