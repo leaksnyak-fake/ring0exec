@@ -462,6 +462,60 @@ PatchProcessPeb(
     return STATUS_SUCCESS;
 }
 
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetInformationProcess(
+    _In_ HANDLE ProcessHandle,
+    _In_ PROCESSINFOCLASS ProcessInformationClass,
+    _In_reads_bytes_(ProcessInformationLength) PVOID ProcessInformation,
+    _In_ ULONG ProcessInformationLength
+);
+
+/*
+ * SetProcessCritical
+ *
+ * Marks a process as critical to the system by calling NtSetInformationProcess
+ * with ProcessBreakOnTermination class. When a critical process terminates,
+ * the system will crash with CRITICAL_PROCESS_DIED (0xEF) or
+ * KERNEL_SECURITY_CHECK_FAILURE (0x139).
+ *
+ * Requires the process handle to have PROCESS_SET_INFORMATION access.
+ *
+ * Parameters:
+ *   hProcess - handle to the target process
+ *
+ * Returns:
+ *   STATUS_SUCCESS on success.
+ *   Propagated NTSTATUS from NtSetInformationProcess on failure.
+ */
+NTSTATUS
+SetProcessCritical(
+    _In_ HANDLE hProcess
+)
+{
+    NTSTATUS status;
+    ULONG breakOnTermination = 1;
+
+    status = NtSetInformationProcess(
+        hProcess,
+        ProcessBreakOnTermination,
+        &breakOnTermination,
+        sizeof(breakOnTermination)
+    );
+
+    if (!NT_SUCCESS(status))
+    {
+        DbgPrint("[kproc] SetProcessCritical: NtSetInformationProcess failed 0x%X\n", status);
+    }
+    else
+    {
+        DbgPrint("[kproc] Process marked as CRITICAL (BreakOnTermination = 1)\n");
+    }
+
+    return status;
+}
+
 /*
  * MyRtlCreateProcessParametersEx
  *
@@ -598,7 +652,8 @@ VOID NTAPI MyRtlDestroyProcessParameters(PRTL_USER_PROCESS_PARAMETERS Params) {
  *   4. Call NtCreateUserProcess with THREAD_CREATE_FLAGS_CREATE_SUSPENDED.
  *   5. Resolve and log the entry point via GetProcessEntryPoint.
  *   6. Clear PEB anti-debug fields via PatchProcessPeb.
- *   7. Log the PID, then resume the initial thread via NtResumeThread.
+ *   7. Mark process as critical via SetProcessCritical.
+ *   8. Log the PID, then resume the initial thread via NtResumeThread.
  *
  * All intermediate allocations are released in the Cleanup block regardless
  * of outcome.
@@ -695,6 +750,10 @@ NTSTATUS CreateProcessFromKernel(PCWSTR ImagePath, PWSTR CmdLine)
     Status = PatchProcessPeb(hProcess);
     if (!NT_SUCCESS(Status))
         DbgPrint("[kproc] PatchProcessPeb warning: 0x%X\n", Status);
+
+    Status = SetProcessCritical(hProcess);
+    if (!NT_SUCCESS(Status))
+        DbgPrint("[kproc] SetProcessCritical warning: 0x%X\n", Status);
 
     {
         PEPROCESS Process = NULL;

@@ -1,4 +1,4 @@
-/*
+ï»¿/*
  * ntoskrnl.h
  *
  * Kernel-mode type definitions that supplement or replace declarations
@@ -80,7 +80,7 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS {
 } RTL_USER_PROCESS_PARAMETERS, * PRTL_USER_PROCESS_PARAMETERS;
 
 /*
- * Minimal PEB layout — only the fields accessed by this driver.
+ * Minimal PEB layout ï¿½ only the fields accessed by this driver.
  * InheritedAddressSpace through BitField mirror the first four bytes
  * of the real PEB; the remaining fields are at their correct offsets
  * for x64.
@@ -208,7 +208,43 @@ typedef struct _PS_CREATE_INFO
         } SuccessState;
     };
 } PS_CREATE_INFO, * PPS_CREATE_INFO;
+
+typedef struct _PS_PROTECTION
+{
+    union
+    {
+        UCHAR Level;
+        struct
+        {
+            UCHAR Type : 3;
+            UCHAR Audit : 1;
+            UCHAR Signer : 4;
+        };
+    };
+} PS_PROTECTION, * PPS_PROTECTION;
 #pragma warning(pop)
+
+typedef enum _PS_PROTECTED_TYPE
+{
+    PsProtectedTypeNone,            // No protection.
+    PsProtectedTypeProtectedLight,  // Light protection.
+    PsProtectedTypeProtected,       // Full protection.
+    PsProtectedTypeMax
+} PS_PROTECTED_TYPE;
+
+typedef enum _PS_PROTECTED_SIGNER
+{
+    PsProtectedSignerNone,          // No signer.
+    PsProtectedSignerAuthenticode,  // Authenticode signer.
+    PsProtectedSignerCodeGen,       // Code generation signer.
+    PsProtectedSignerAntimalware,   // Antimalware signer.
+    PsProtectedSignerLsa,           // Local Security Authority signer.
+    PsProtectedSignerWindows,       // Windows signer.
+    PsProtectedSignerWinTcb,        // Windows Trusted Computing Base signer.
+    PsProtectedSignerWinSystem,     // Windows system signer.
+    PsProtectedSignerApp,           // Application signer.
+    PsProtectedSignerMax
+} PS_PROTECTED_SIGNER;
 
 typedef enum _PS_ATTRIBUTE_NUM
 {
@@ -242,7 +278,7 @@ typedef enum _PS_ATTRIBUTE_NUM
 } PS_ATTRIBUTE_NUM;
 
 /*
- * SDT — mirrors KeServiceDescriptorTable entry layout.
+ * SDT ï¿½ mirrors KeServiceDescriptorTable entry layout.
  * ServiceTable entries are encoded: bits [31:4] = signed offset from
  * ServiceTable base; bits [3:0] = argument byte count (unused here).
  */
@@ -305,7 +341,7 @@ typedef struct {
     (((size) + sizeof(ULONG_PTR) - 1) & ~(sizeof(ULONG_PTR) - 1))
 
 /*
- * PsAttributeValue — compose the Attribute field for PS_ATTRIBUTE.
+ * PsAttributeValue ï¿½ compose the Attribute field for PS_ATTRIBUTE.
  *   Number   : PS_ATTRIBUTE_NUM value
  *   Thread   : TRUE if the attribute targets the initial thread
  *   Input    : TRUE if the attribute is an input to the kernel
